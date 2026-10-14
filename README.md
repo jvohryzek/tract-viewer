@@ -10,20 +10,51 @@
 
 [![Lesion in turquoise, intersecting tracks in orange, reference tracks in grey.](docs/preview.png)](https://jvohryzek.github.io/tract-viewer/)
 
-## Use your own lesion
+## Setup
 
-Download the repository, open its folder in MATLAB, and run:
+Requires **MATLAB with Image Processing Toolbox** (tested in R2026a).
+You supply the lesion masks; **600 reference tracks are included**.
+
+1. Create a folder called `tract_viewer_demo`, with a `lesions` subfolder.
+   Put one mask per subject there, using the format below.
+2. [Download the toolbox ZIP](https://github.com/jvohryzek/tract-viewer/archive/refs/heads/main.zip)
+   and unzip it into `tract_viewer_demo`:
+
+   ```text
+   tract_viewer_demo/
+   ├── lesions/
+   │   ├── subject_01.nii.gz
+   │   └── subject_02.nii.gz
+   └── tract-viewer-main/
+       └── ...toolbox files
+   ```
+
+3. In MATLAB, set **Current Folder** to `tract_viewer_demo`, then run:
+
+   ```matlab
+   addpath("tract-viewer-main");
+   plot_lesions("lesions", "results");
+   ```
+
+4. Open `results/subject_01.html` and `results/subject_02.html` in your browser
+   for the **individual interactive views**. The **group figure** opens in
+   MATLAB and is saved as `results/all_subjects.png` and `results/all_subjects.pdf`.
+
+Subjects follow alphabetical filename order, with the same axial scale in each
+group panel. Drag the HTML views to rotate; scroll to zoom.
+
+For an **individual PNG/PDF** too, run one mask separately:
 
 ```matlab
-plot_lesion("my_lesion.nii.gz")
+plot_lesions("lesions/subject_01.nii.gz", "results/subject_01");
 ```
 
-Open the generated **`lesion.html`** in your browser. Drag to rotate; scroll to
-zoom. You can share this single HTML file. Requires MATLAB with **Image
-Processing Toolbox** (tested in R2026a).
+Its single-subject figure is saved as `all_subjects.png` / `.pdf` in that subfolder.
 
-**You supply only the lesion mask.** The 600 reference tracks are included;
-the function draws the lesion and highlights intersecting tracks for you.
+To try the bundled simulated lesion, run `example_tracts` and open
+`tract-viewer-main/example.html`, or [try it online](https://jvohryzek.github.io/tract-viewer/).
+
+## Mask format
 
 | Mask requirement | What to provide |
 | :--- | :--- |
@@ -33,30 +64,9 @@ the function draws the lesion and highlights intersecting tracks for you.
 | Dimensions | Any 3-D grid, e.g. `182 × 218 × 182` at 1 mm or `91 × 109 × 91` at 2 mm |
 | Orientation | A valid NIfTI **sform or qform**, with spatial units in **millimetres**; axis order and flips are read from the header |
 
-No manual flipping or mesh preparation is needed. The function does **not**
-register native-space masks. Orange tracks belong to the small display sample;
+No manual flipping or mesh preparation is needed. Native-space masks must be
+registered beforehand. Orange tracks show intersections in the display sample;
 this is a visualisation, not a full disconnection analysis.
-
-## Several subjects
-
-Put the lesion masks in one folder, then run:
-
-```matlab
-plot_lesions("lesion_masks", "views");
-```
-
-This opens an all-subject figure and saves **one named HTML viewer per mask**,
-plus **`all_subjects.png` and `all_subjects.pdf`** in `views`. Subjects appear in
-alphabetical filename order, with the same axial view and scale in every panel.
-
-## Try the example
-
-```matlab
-example_tracts
-```
-
-Open `example.html`. It uses real atlas tracks and a bundled **simulated lesion
-mask**, with no patient data. The same example is [live here](https://jvohryzek.github.io/tract-viewer/).
 
 ## Where the tracks come from
 

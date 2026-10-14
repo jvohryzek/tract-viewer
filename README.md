@@ -15,13 +15,13 @@
 Requires **MATLAB with Image Processing Toolbox** (tested in R2026a).
 You supply the lesion masks; **600 reference tracks are included**.
 
-1. Create a project folder, for example `lesion_project`, with a `lesions` subfolder.
+1. Create a folder called `lesion_visualisation`, with a `lesions` subfolder.
    Put one mask per subject there, using the format below.
 2. [Download the toolbox ZIP](https://github.com/jvohryzek/tract-viewer/archive/refs/heads/main.zip)
-   and unzip it into `lesion_project`:
+   and unzip it into `lesion_visualisation`:
 
    ```text
-   lesion_project/
+   lesion_visualisation/
    ├── lesions/
    │   ├── subject_01.nii.gz
    │   └── subject_02.nii.gz
@@ -29,7 +29,7 @@ You supply the lesion masks; **600 reference tracks are included**.
        └── ...toolbox files
    ```
 
-3. In MATLAB, set **Current Folder** to `lesion_project`, then run:
+3. In MATLAB, set **Current Folder** to `lesion_visualisation`, then run:
 
    ```matlab
    addpath("tract-viewer-main");

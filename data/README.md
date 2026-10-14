@@ -33,7 +33,14 @@ The centre comes from MATLAB `RandStream('mt19937ar', 'Seed', 7)` and the
 expression `[20+20*rand(s), -35+25*rand(s), 15+30*rand(s)]`. There are 7,232
 lesion voxels. This mask was generated mathematically; no patient data are used.
 
-`example_tracts.m` passes this file to `plot_lesion`. The function transforms
+`example_lesion_2.nii.gz` uses the same grid with a 9-mm sphere. Its centre
+comes from MATLAB `RandStream('mt19937ar', 'Seed', 23)` and
+`[-20-20*rand(s), -35+25*rand(s), 15+30*rand(s)]`.
+The exact centres, voxel counts and mask hashes are recorded in
+[source.json](source.json).
+
+`example_tracts.m` passes both masks to `plot_lesions` to create individual
+viewers, a combined dropdown report and a PNG/PDF montage. `plot_lesion` transforms
 the mask surface into world coordinates and checks which **display segments**
 pass through its lesion voxels. These are illustrative intersections in a
 600-track subsample, not full-atlas disconnection estimates. The HTML retains

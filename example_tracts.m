@@ -1,5 +1,5 @@
-% Real atlas tracks with a simulated binary lesion mask; no patient data.
+% Real atlas tracks with two simulated lesion masks; no patient data.
 folder = fileparts(mfilename('fullpath'));
-plot_lesion(fullfile(folder, 'data', 'example_lesion.nii.gz'), ...
-    fullfile(folder, 'example.html'));
-fprintf('Open in your browser: %s\n', fullfile(folder, 'example.html'));
+masks = fullfile(folder, 'data', ["example_lesion.nii.gz", "example_lesion_2.nii.gz"]);
+plot_lesions(masks, fullfile(folder, 'views'));
+fprintf('Open in your browser: %s\n', fullfile(folder, 'views', 'all_subjects.html'));

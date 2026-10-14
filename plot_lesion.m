@@ -5,7 +5,8 @@ function [output_file, geometry] = plot_lesion(mask_file, output_file)
 %   with a valid voxel-to-world transform in millimetres. Requires the
 %   Image Processing Toolbox. No registration is performed.
 %   Orange tracks intersect the mask within the 600-track display sample.
-%   Optional second output: reference/affected tracks and the lesion mesh.
+%   Reports mask volume and intersecting display tracks, not fibre damage.
+%   Optional second output: reference/affected tracks, lesion mesh and summary.
 
 arguments
     mask_file (1,1) string
@@ -54,8 +55,28 @@ geometry.reference = reference;
 geometry.affected = reference(hit);
 geometry.lesion = lesion;
 
+% Measure the original mask, not its simplified surface. 1000 mm^3 = 1 mL.
+[~, name, extension] = fileparts(mask_file);
+summary.subject = regexprep(name + extension, '\.nii(\.gz)?$', '', 'ignorecase');
+summary.lesion_voxels = nnz(mask);
+summary.lesion_volume_ml = nnz(mask) * abs(det(T(1:3, 1:3))) / 1000;
+summary.intersecting_tracks = nnz(hit);
+summary.reference_tracks = numel(reference);
+summary.intersecting_percent = 100 * nnz(hit) / numel(reference);
+geometry.summary = summary;
+
 % Keep the atlas credit with the self-contained HTML when it is shared.
 page = fileread(output_file);
+name = strrep(strrep(strrep(char(summary.subject), '&', '&amp;'), '<', '&lt;'), '>', '&gt;');
+header = sprintf(['<header class="subject-summary">\n<h1>%s</h1>\n<dl>' ...
+    '<div><dt>Lesion volume</dt><dd>%.3f <small>mL</small>' ...
+    '<p>%d voxels in the supplied MNI mask</p></dd></div>' ...
+    '<div><dt>Intersecting display tracks</dt><dd>%d <small>/ %d</small>' ...
+    '<p>%.1f%% of the reference sample</p></dd></div></dl>' ...
+    '<p>Track intersections describe the display sample, not a full-atlas damage estimate.</p>\n</header>'], ...
+    name, summary.lesion_volume_ml, summary.lesion_voxels, ...
+    summary.intersecting_tracks, summary.reference_tracks, summary.intersecting_percent);
+page = strrep(page, '<!--SUBJECT_SUMMARY-->', header);
 credit = fileread(fullfile(folder, 'data', 'credit.html'));
 page = strrep(page, '</body>', [credit newline '</body>']);
 [fid, message] = fopen(output_file, 'w', 'n', 'UTF-8');

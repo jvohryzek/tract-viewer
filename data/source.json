@@ -641,5 +641,31 @@
     138192,
     138445
   ],
-  "sample_sha256": "5836bca10d2be529a221a555ab920817f87fab12c47004d70d16b8d80e615195"
+  "sample_sha256": "5836bca10d2be529a221a555ab920817f87fab12c47004d70d16b8d80e615195",
+  "synthetic_masks": [
+    {
+      "file": "example_lesion.nii.gz",
+      "seed": 7,
+      "centre_ras_mm": [
+        21.526165787479144,
+        -15.502030193997136,
+        28.152276943226806
+      ],
+      "radius_mm": 12,
+      "lesion_voxels": 7232,
+      "sha256": "baf4a305020d5359a72a31b57eecdcc8fa855e09b5ca99fc272488c55590a963"
+    },
+    {
+      "file": "example_lesion_2.nii.gz",
+      "seed": 23,
+      "centre_ras_mm": [
+        -30.345957676931786,
+        -11.325934904629648,
+        37.96379278190721
+      ],
+      "radius_mm": 9,
+      "lesion_voxels": 3046,
+      "sha256": "55c84334849b2881fcd26081dc219708cc4dc05055a8643be90660b4ebb1fee4"
+    }
+  ]
 }

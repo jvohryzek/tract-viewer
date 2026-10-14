@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="author" content="Jakub Vohryzek; Yonatan Sanz Perl">
   <title>Tract viewer</title>
   <style>
     * { box-sizing: border-box; }
@@ -12,6 +13,15 @@
     button, input, select, canvas { outline-offset: 4px; }
     :focus-visible { outline: 2px solid #75bde8; }
     .viewer { max-width: 1000px; margin: auto; overflow: hidden; border-radius: 13px; background: #181818; color: #e5e5e5; }
+    .subject-summary { padding: 20px 22px 16px; border-bottom: 1px solid #383838; }
+    .subject-summary h1 { margin: 0 0 14px; font-size: 18px; font-weight: 600; overflow-wrap: anywhere; }
+    .subject-summary dl { display: flex; flex-wrap: wrap; gap: 16px 48px; margin: 0; }
+    .subject-summary dt { font-size: 12px; color: #c6c6c6; }
+    .subject-summary dd { margin: 2px 0; font-size: 28px; line-height: 1.3; color: #62cdc8; }
+    .subject-summary dl > div + div dd { color: #f5a060; }
+    .subject-summary small { font-size: 16px; }
+    .subject-summary p { margin: 8px 0 0; font-size: 11px; color: #bdbdbd; }
+    .subject-summary dl p { margin: 0; }
     .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 18px 22px 0; }
     .tools, label { display: flex; align-items: center; gap: 12px; }
     label { gap: 7px; font-size: 12px; color: #c6c6c6; }
@@ -31,11 +41,14 @@
     .swatch.lesion { width: 9px; height: 9px; border-radius: 50%; background: #62cdc8; }
     .swatch.reference { background: #afafaf; }
     noscript { display: block; padding: 20px; }
+    .creators { max-width: 1000px; margin: 16px auto; color: #617587; font-size: 12px; }
+    .creators a { color: inherit; text-underline-offset: 3px; }
     @media (max-width: 600px) { body { padding: 12px; } .stage { height: 400px; } .toolbar { flex-wrap: wrap; } }
   </style>
 </head>
 <body>
   <main class="viewer">
+    <!--SUBJECT_SUMMARY-->
     <div class="toolbar">
       <label>View
         <select data-view aria-label="Anatomical view">
@@ -66,6 +79,8 @@
     <noscript>Enable JavaScript to view the tractogram.</noscript>
     <script type="application/json" data-geometry>{{GEOMETRY}}</script>
   </main>
+  <p class="creators">Created by <a href="mailto:jakub.vohryzek@upf.edu">Jakub Vohryzek</a>
+    &amp; <a href="mailto:yonatan.sanz@upf.edu">Yonatan Sanz Perl</a>.</p>
   <script>
   /* Extracted from the Padova Stroke report viewer. No external libraries. */
   (() => {

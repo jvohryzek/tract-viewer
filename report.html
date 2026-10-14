@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="author" content="Jakub Vohryzek; Yonatan Sanz Perl">
+  <title>Lesion visualisation — all subjects</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 24px; background: #f4f7fa; font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    main { max-width: 1000px; margin: auto; overflow: hidden; border-radius: 13px; background: #181818; color: #e5e5e5; }
+    .subjects { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 14px 22px; border-bottom: 1px solid #303030; }
+    label { color: #a9a9a9; font-size: 12px; }
+    select { flex: 0 1 240px; width: 240px; min-width: 0; max-width: calc(100% - 110px); padding: 8px 12px; border: 1px solid #414141; border-radius: 9px; background: #252525; color: inherit; font: 500 13px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; cursor: pointer; }
+    select:hover { border-color: #717171; }
+    select:focus-visible { outline: 2px solid #75bde8; outline-offset: 3px; }
+    output { max-width: 100%; padding: 3px 9px; border-radius: 20px; background: #ffffff0b; color: #a9a9a9; font-size: 11px; font-variant-numeric: tabular-nums; }
+    iframe { display: block; width: 100%; height: 850px; border: 0; }
+    [hidden] { display: none !important; }
+    noscript { display: block; padding: 24px; }
+    @media (max-width: 600px) { body { padding: 12px; } }
+  </style>
+</head>
+<body>
+  <main aria-label="Lesion visualisation">
+    <header class="subjects">
+      <label for="subject">Subject</label>
+      <select id="subject"></select>
+      <output id="position" for="subject" aria-live="polite"></output>
+    </header>
+    <iframe title="Interactive subject viewer"></iframe>
+    <noscript>Enable JavaScript to select and view subjects.</noscript>
+  </main>
+  <script type="application/json" id="subjects">{{SUBJECTS}}</script>
+  <script>
+    'use strict';
+    const payload = document.getElementById('subjects').textContent;
+    const subjects = payload.trim().startsWith('{{') ? [] : JSON.parse(payload);
+    const select = document.getElementById('subject');
+    const frame = document.querySelector('iframe');
+    const position = document.getElementById('position');
+    const embeddedStyle = '<style>body{padding:0}.viewer{border-radius:0}.subject-summary h1{display:none}</style>';
+    subjects.forEach((subject, i) => select.add(new Option(subject.name, i)));
+    function showSubject() {
+      const i = select.selectedIndex;
+      frame.title = `Interactive viewer: ${subjects[i].name}`;
+      frame.srcdoc = subjects[i].html.replace('<head>', '<head><base target="_blank">')
+        .replace('</head>', embeddedStyle + '</head>');
+      position.textContent = `${i + 1} of ${subjects.length}`;
+    }
+    // Only one viewer is active. Resize it when its content or window changes.
+    let resize;
+    frame.addEventListener('load', () => {
+      if (resize) resize.disconnect();
+      const body = frame.contentDocument.body;
+      const fit = () => { frame.style.height = `${body.scrollHeight}px`; };
+      resize = new ResizeObserver(fit);
+      resize.observe(body);
+      fit();
+    });
+    select.addEventListener('change', showSubject);
+    if (subjects.length) showSubject();
+    else {
+      select.disabled = true;
+      frame.hidden = true;
+      position.textContent = 'Report template: run plot_lesions, then open all_subjects.html in your output folder.';
+    }
+  </script>
+</body>
+</html>

@@ -4,7 +4,7 @@
 
 **One lesion mask → an interactive tract view.**
 
-[**Try it online ↗**](https://jvohryzek.github.io/tract-viewer/) · [Download v0.2.0](https://github.com/jvohryzek/tract-viewer/releases/download/v0.2.0/tract-viewer-v0.2.0.zip)
+[**Try it online ↗**](https://jvohryzek.github.io/tract-viewer/) · [Download v0.3.0](https://github.com/jvohryzek/tract-viewer/releases/download/v0.3.0/tract-viewer-v0.3.0.zip)
 
 </div>
 
@@ -17,7 +17,7 @@ You supply the lesion masks; **600 reference tracks are included**.
 
 1. Create a folder called `lesion_visualisation`, with a `lesions` subfolder.
    Put one mask per subject there, using the format below.
-2. [Download the toolbox ZIP](https://github.com/jvohryzek/tract-viewer/releases/download/v0.2.0/tract-viewer-v0.2.0.zip)
+2. [Download the toolbox ZIP](https://github.com/jvohryzek/tract-viewer/releases/download/v0.3.0/tract-viewer-v0.3.0.zip)
    and unzip it into `lesion_visualisation`:
 
    ```text
@@ -36,12 +36,18 @@ You supply the lesion masks; **600 reference tracks are included**.
    plot_lesions("lesions", "results");
    ```
 
-4. Open `results/subject_01.html` and `results/subject_02.html` in your browser
-   for the **individual interactive views**. The **group figure** opens in
-   MATLAB and is saved as `results/all_subjects.png` and `results/all_subjects.pdf`.
+4. Open **`results/all_subjects.html`** and choose a subject from the dropdown.
+   This single file contains every interactive view and can be shared on its own.
+   Individual views remain in `results/subject_01.html`, etc. The **group figure**
+   opens in MATLAB and is saved as `results/all_subjects.png` and `.pdf`.
 
 Subjects follow alphabetical filename order, with the same axial scale in each
 group panel. Drag the HTML views to rotate; scroll to zoom.
+
+Each individual HTML also shows **lesion volume (mL)**, voxel count, and
+**intersecting display tracks (count and % of the 600-track sample)**.
+Volume is measured from the supplied MNI mask; track counts are not full-atlas
+disconnection estimates.
 
 For an **individual PNG/PDF** too, run one mask separately:
 
@@ -51,8 +57,8 @@ plot_lesions("lesions/subject_01.nii.gz", "results/subject_01");
 
 Its single-subject figure is saved as `all_subjects.png` / `.pdf` in that subfolder.
 
-To try the bundled simulated lesion, run `example_tracts` and open
-`tract-viewer/example.html`, or [try it online](https://jvohryzek.github.io/tract-viewer/).
+To try the two bundled simulated lesions, run `example_tracts` and open
+`tract-viewer/views/all_subjects.html`, or [try it online](https://jvohryzek.github.io/tract-viewer/).
 
 ## Mask format
 
@@ -76,3 +82,8 @@ was accessed through the **[Lesion Quantification Toolkit (LQT)](https://github.
 
 Code: [MIT](LICENSE). Atlas data: [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)
 and HCP terms. [Full attribution and data preparation](data/README.md).
+
+## Creators
+
+- **Jakub Vohryzek** — [jakub.vohryzek@upf.edu](mailto:jakub.vohryzek@upf.edu)
+- **Yonatan Sanz Perl** — [yonatan.sanz@upf.edu](mailto:yonatan.sanz@upf.edu)

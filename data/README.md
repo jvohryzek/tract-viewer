@@ -26,10 +26,19 @@ legacy TRK header omits its translation; no half-voxel shift is applied. The
 original files are unchanged. [source.json](source.json) records hashes and
 the exact original record indices.
 
-`example_tracts.m` adds a spherical lesion with a fixed random seed. Orange
-tracks are those whose **display segments** intersect that sphere. These are
-illustrative intersections in a display subsample, not full-atlas disconnection
-estimates. No clinical lesion masks are used.
+`example_lesion.nii.gz` is a simulated **0/1 NIfTI mask** on a 182 × 218 × 182,
+1-mm grid with RAS voxel-zero position (−90, −126, −72) mm. It marks voxel
+centres within 12 mm of (21.5261657875, −15.5020301940, 28.1522769432) mm.
+The centre comes from MATLAB `RandStream('mt19937ar', 'Seed', 7)` and the
+expression `[20+20*rand(s), -35+25*rand(s), 15+30*rand(s)]`. There are 7,232
+lesion voxels. This mask was generated mathematically; no patient data are used.
+
+`example_tracts.m` passes this file to `plot_lesion`. The function transforms
+the mask surface into world coordinates and checks which **display segments**
+pass through its lesion voxels. These are illustrative intersections in a
+600-track subsample, not full-atlas disconnection estimates. The HTML retains
+the atlas credit. `plot_tracts` remains available for callers with prepared
+track/mesh geometry; see its MATLAB help.
 
 ## Attribution and terms
 

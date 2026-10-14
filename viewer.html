@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Tract viewer</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 24px; background: #f4f7fa; font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    [hidden] { display: none !important; }
+    button, input, select { font: inherit; }
+    button, input, select, canvas { outline-offset: 4px; }
+    :focus-visible { outline: 2px solid #75bde8; }
+    .viewer { max-width: 1000px; margin: auto; overflow: hidden; border-radius: 13px; background: #181818; color: #e5e5e5; }
+    .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 18px 22px 0; }
+    .tools, label { display: flex; align-items: center; gap: 12px; }
+    label { gap: 7px; font-size: 12px; color: #c6c6c6; }
+    select, button { padding: 7px 10px; border: 1px solid #505050; border-radius: 6px; background: #2c2c2c; color: #e5e5e5; font-size: 12px; }
+    button { cursor: pointer; }
+    input { margin: 0; accent-color: #f5a060; }
+    .stage { position: relative; height: 490px; }
+    canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+    canvas:active { cursor: grabbing; }
+    .directions { position: absolute; inset: 0; pointer-events: none; }
+    .directions span { position: absolute; transform: translate(-50%, -50%); font: 11px ui-monospace, monospace; color: #a5a5a5; }
+    .error { position: absolute; inset: 40%; margin: 0; width: 70%; left: 15%; text-align: center; font-size: 13px; }
+    footer { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 14px 22px; border-top: 1px solid #383838; font-size: 11px; color: #bdbdbd; }
+    .legend { display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
+    .legend span { display: inline-flex; align-items: center; gap: 7px; }
+    .swatch { display: inline-block; width: 15px; height: 3px; background: #f5a060; }
+    .swatch.lesion { width: 9px; height: 9px; border-radius: 50%; background: #62cdc8; }
+    .swatch.reference { background: #afafaf; }
+    noscript { display: block; padding: 20px; }
+    @media (max-width: 600px) { body { padding: 12px; } .stage { height: 400px; } .toolbar { flex-wrap: wrap; } }
+  </style>
+</head>
+<body>
+  <main class="viewer">
+    <div class="toolbar">
+      <label>View
+        <select data-view aria-label="Anatomical view">
+          <option value="oblique">Oblique</option>
+          <option value="axial">Axial</option>
+          <option value="sagittal">Sagittal</option>
+          <option value="coronal">Coronal</option>
+        </select>
+      </label>
+      <div class="tools">
+        <label><input type="checkbox" data-context checked> Reference</label>
+        <button type="button" data-reset>Reset view</button>
+      </div>
+    </div>
+    <div class="stage">
+      <canvas tabindex="0" role="img" aria-label="Interactive 3D tractogram. Drag or use arrow keys to rotate; scroll or use plus and minus to zoom; Home to reset."></canvas>
+      <div class="directions" aria-hidden="true"></div>
+      <p class="error" data-error hidden></p>
+    </div>
+    <footer>
+      <div class="legend">
+        <span><i class="swatch lesion"></i>Lesion</span>
+        <span><i class="swatch"></i>Affected streamlines</span>
+        <span><i class="swatch reference"></i>Reference</span>
+      </div>
+      <span data-status>Loading interactive view…</span>
+    </footer>
+    <noscript>Enable JavaScript to view the tractogram.</noscript>
+    <script type="application/json" data-geometry>{{GEOMETRY}}</script>
+  </main>
+  <script>
+  /* Extracted from the Padova Stroke report viewer. No external libraries. */
+  (() => {
+    'use strict';
+    const root = document.querySelector('.viewer');
+    const stage = root.querySelector('.stage');
+    const status = root.querySelector('[data-status]');
+    const view = root.querySelector('[data-view]');
+    const context = root.querySelector('[data-context]');
+    const directions = root.querySelector('.directions');
+    let canvas = root.querySelector('canvas'), renderer, geometry;
+    let yaw = -.48, pitch = .70, zoom = 1, drag = null, scheduled = false;
+
+    function unavailable(message) {
+      renderer = null;
+      const error = root.querySelector('[data-error]');
+      error.textContent = message;
+      error.hidden = false;
+      status.textContent = 'Viewer unavailable';
+    }
+    try {
+      geometry = JSON.parse(root.querySelector('[data-geometry]').textContent);
+    } catch (error) {
+      unavailable('Generate a viewer with plot_tracts in MATLAB first.');
+      return;
+    }
+
+    // Original MNI/RAS framing and anatomical directions, in millimetres.
+    const centre = [0, -15, 10];
+    const axes = [
+      ['R', [87, -10, 10]], ['L', [-87, -10, 10]],
+      ['A', [0, 87, 10]], ['P', [0, -118, 10]],
+      ['S', [0, -10, 91]], ['I', [0, -10, -67]]
+    ];
+    for (const [label] of axes) {
+      const element = document.createElement('span');
+      element.textContent = label;
+      directions.appendChild(element);
+    }
+    const low = [Infinity, Infinity, Infinity], high = [-Infinity, -Infinity, -Infinity];
+    const curves = [...geometry.reference, ...geometry.affected, geometry.vertices, axes.map(a => a[1])];
+    for (const curve of curves) for (const point of curve) for (let d = 0; d < 3; d++) {
+      low[d] = Math.min(low[d], point[d]);
+      high[d] = Math.max(high[d], point[d]);
+    }
+    const normals = geometry.faces.map(face => {
+      const [a, b, c] = face.map(i => geometry.vertices[i]);
+      const u = b.map((v, i) => v - a[i]), v = c.map((v, i) => v - a[i]);
+      const n = [u[1]*v[2] - u[2]*v[1], u[2]*v[0] - u[0]*v[2], u[0]*v[1] - u[1]*v[0]];
+      const length = Math.hypot(...n) || 1;
+      return n.map(x => x / length);
+    });
+    const dot = (a, b) => a.reduce((sum, v, i) => sum + v*b[i], 0);
+
+    // Orthographic camera shared by both rendering paths.
+    function camera() {
+      const w = stage.clientWidth, h = stage.clientHeight;
+      if (w < 2 || h < 2) return null;
+      const a = Math.cos(yaw), b = Math.sin(yaw), c = Math.cos(pitch), d = Math.sin(pitch);
+      const rotation = [[a, -b, 0], [c*b, c*a, -d], [d*b, d*a, c]];
+      const radius = [1, 1];
+      for (let k = 0; k < 8; k++) {
+        const point = low.map((v, j) => ((k >> j) & 1 ? high[j] : v) - centre[j]);
+        for (let i = 0; i < 2; i++) radius[i] = Math.max(radius[i], Math.abs(dot(rotation[i], point)));
+      }
+      const scale = Math.min((w - 56)/(2*radius[0]), (h - 56)/(2*radius[1]))*zoom;
+      const project = point => {
+        const q = point.map((v, i) => v - centre[i]);
+        return [w/2 + scale*dot(rotation[0], q), h/2 - scale*dot(rotation[1], q), dot(rotation[2], q)];
+      };
+      return {w, h, rotation, scale, project, dpr: Math.min(window.devicePixelRatio || 1, 2)};
+    }
+    function orderedFaces(camera) {
+      return geometry.faces.map((face, i) => ({i,
+        z: face.reduce((sum, k) => sum + camera.project(geometry.vertices[k])[2], 0)/3
+      })).sort((a, b) => a.z - b.z);
+    }
+
+    // GPU lines and a translucent, shaded triangle mesh.
+    function webglRenderer() {
+      const gl = canvas.getContext('webgl', {alpha: true, antialias: true});
+      if (!gl) return null;
+      function shader(type, source) {
+        const shader = gl.createShader(type);
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) throw Error(gl.getShaderInfoLog(shader));
+        return shader;
+      }
+      const program = gl.createProgram();
+      gl.attachShader(program, shader(gl.VERTEX_SHADER, `
+        attribute vec3 pos, normal;
+        uniform mat4 transform;
+        uniform vec3 light;
+        uniform float shaded;
+        varying float intensity;
+        void main() {
+          gl_Position = transform * vec4(pos, 1.0);
+          intensity = mix(1.0, 0.72 + 0.28 * abs(dot(normal, light)), shaded);
+        }`));
+      gl.attachShader(program, shader(gl.FRAGMENT_SHADER, `
+        precision mediump float;
+        uniform vec4 color;
+        varying float intensity;
+        void main() { gl_FragColor = vec4(color.rgb * intensity, color.a); }`));
+      gl.linkProgram(program);
+      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw Error(gl.getProgramInfoLog(program));
+      const pos = gl.getAttribLocation(program, 'pos'), normal = gl.getAttribLocation(program, 'normal');
+      const transform = gl.getUniformLocation(program, 'transform'), color = gl.getUniformLocation(program, 'color');
+      const light = gl.getUniformLocation(program, 'light'), shaded = gl.getUniformLocation(program, 'shaded');
+      function lineBuffer(curves) {
+        const values = [];
+        for (const curve of curves) for (let i = 0; i < curve.length - 1; i++) {
+          values.push(...curve[i], ...curve[i + 1]);
+        }
+        const buffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(values), gl.STATIC_DRAW);
+        return {buffer, count: values.length/3};
+      }
+      const reference = lineBuffer(geometry.reference), affected = lineBuffer(geometry.affected);
+      const mesh = gl.createBuffer();
+      canvas.addEventListener('webglcontextlost', event => {
+        event.preventDefault();
+        try { fallback(); schedule(); }
+        catch (error) { unavailable('This browser could not render the view. Try another browser.'); }
+      });
+      return camera => {
+        const matrix = new Float32Array(16), scale = [2*camera.scale/camera.w, 2*camera.scale/camera.h, -1/400];
+        for (let i = 0; i < 3; i++) {
+          for (let j = 0; j < 3; j++) matrix[j*4 + i] = camera.rotation[i][j]*scale[i];
+          matrix[12 + i] = -dot(camera.rotation[i], centre)*scale[i];
+        }
+        matrix[15] = 1;
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        gl.useProgram(program);
+        gl.uniformMatrix4fv(transform, false, matrix);
+        gl.uniform3f(light, ...camera.rotation[2]);
+        gl.clearColor(0, 0, 0, 0);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        gl.disable(gl.DEPTH_TEST);
+        gl.enableVertexAttribArray(pos);
+        gl.disableVertexAttribArray(normal);
+        gl.vertexAttrib3f(normal, 0, 0, 1);
+        gl.uniform1f(shaded, 0);
+        function lines(data, rgb, alpha) {
+          gl.bindBuffer(gl.ARRAY_BUFFER, data.buffer);
+          gl.vertexAttribPointer(pos, 3, gl.FLOAT, false, 0, 0);
+          gl.uniform4f(color, ...rgb, alpha);
+          gl.drawArrays(gl.LINES, 0, data.count);
+        }
+        if (context.checked) lines(reference, [175/255, 175/255, 175/255], .22);
+        lines(affected, [245/255, 160/255, 96/255], .60);
+        const values = new Float32Array(geometry.faces.length*18);
+        let offset = 0;
+        for (const {i} of orderedFaces(camera)) for (const k of geometry.faces[i]) {
+          values.set(geometry.vertices[k], offset);
+          values.set(normals[i], offset + 3);
+          offset += 6;
+        }
+        gl.bindBuffer(gl.ARRAY_BUFFER, mesh);
+        gl.bufferData(gl.ARRAY_BUFFER, values, gl.DYNAMIC_DRAW);
+        gl.vertexAttribPointer(pos, 3, gl.FLOAT, false, 24, 0);
+        gl.enableVertexAttribArray(normal);
+        gl.vertexAttribPointer(normal, 3, gl.FLOAT, false, 24, 12);
+        gl.uniform1f(shaded, 1);
+        gl.uniform4f(color, 98/255, 205/255, 200/255, .30);
+        gl.drawArrays(gl.TRIANGLES, 0, geometry.faces.length*3);
+      };
+    }
+
+    // Canvas fallback keeps the same projection, colours and controls.
+    function canvasRenderer() {
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw Error('Canvas is unavailable');
+      return camera => {
+        ctx.setTransform(camera.dpr, 0, 0, camera.dpr, 0, 0);
+        ctx.clearRect(0, 0, camera.w, camera.h);
+        ctx.lineJoin = 'round';
+        ctx.lineWidth = .65;
+        function lines(curves, color) {
+          ctx.strokeStyle = color;
+          ctx.beginPath();
+          for (const curve of curves) curve.forEach((point, i) => {
+            const q = camera.project(point);
+            if (i) ctx.lineTo(q[0], q[1]); else ctx.moveTo(q[0], q[1]);
+          });
+          ctx.stroke();
+        }
+        if (context.checked) lines(geometry.reference, 'rgba(175,175,175,.22)');
+        lines(geometry.affected, 'rgba(245,160,96,.85)');
+        for (const {i} of orderedFaces(camera)) {
+          const triangle = geometry.faces[i].map(k => camera.project(geometry.vertices[k]));
+          const shade = .72 + .28*Math.abs(dot(normals[i], camera.rotation[2]));
+          const rgb = [98, 205, 200].map(value => Math.round(value*shade));
+          ctx.fillStyle = `rgba(${rgb.join(',')},.30)`;
+          ctx.beginPath();
+          ctx.moveTo(triangle[0][0], triangle[0][1]);
+          ctx.lineTo(triangle[1][0], triangle[1][1]);
+          ctx.lineTo(triangle[2][0], triangle[2][1]);
+          ctx.closePath();
+          ctx.fill();
+        }
+      };
+    }
+    function fallback() {
+      const next = canvas.cloneNode(false);
+      canvas.replaceWith(next);
+      canvas = next;
+      renderer = canvasRenderer();
+      bindCanvas();
+      root.dataset.renderer = 'canvas';
+    }
+    function draw() {
+      scheduled = false;
+      const c = camera();
+      if (!c || !renderer) return;
+      const width = Math.round(c.w*c.dpr), height = Math.round(c.h*c.dpr);
+      if (canvas.width !== width || canvas.height !== height) { canvas.width = width; canvas.height = height; }
+      try { renderer(c); }
+      catch (error) {
+        try {
+          if (root.dataset.renderer === 'canvas') throw error;
+          fallback();
+          schedule(); // Size the replacement canvas before drawing.
+          return;
+        } catch (failure) { unavailable('This browser could not render the view. Try another browser.'); return; }
+      }
+      axes.forEach(([, point], i) => {
+        const q = c.project(point), element = directions.children[i];
+        element.style.left = q[0] + 'px';
+        element.style.top = q[1] + 'px';
+        element.hidden = q[0] < 14 || q[0] > c.w - 14 || q[1] < 14 || q[1] > c.h - 14 ||
+          Math.hypot(q[0] - c.w/2, q[1] - c.h/2) < 14*c.scale;
+      });
+      status.textContent = 'Drag to rotate · scroll to zoom';
+    }
+    function schedule() {
+      if (!scheduled) { scheduled = true; requestAnimationFrame(draw); }
+    }
+    function preset(name) {
+      [yaw, pitch] = {oblique: [-.48, .70], axial: [0, 0],
+        sagittal: [-Math.PI/2, -Math.PI/2], coronal: [0, -Math.PI/2]}[name];
+      zoom = 1;
+      view.value = name;
+      schedule();
+    }
+    function bindCanvas() {
+      canvas.addEventListener('pointerdown', event => {
+        drag = {x: event.clientX, y: event.clientY};
+        canvas.setPointerCapture(event.pointerId);
+      });
+      canvas.addEventListener('pointermove', event => {
+        if (!drag) return;
+        yaw += (event.clientX - drag.x)*.006;
+        pitch += (event.clientY - drag.y)*.006;
+        drag = {x: event.clientX, y: event.clientY};
+        view.value = 'oblique';
+        schedule();
+      });
+      for (const name of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+        canvas.addEventListener(name, () => { drag = null; });
+      }
+      canvas.addEventListener('wheel', event => {
+        event.preventDefault();
+        zoom = Math.max(.6, Math.min(2.8, zoom*Math.exp(-event.deltaY*.001)));
+        schedule();
+      }, {passive: false});
+      canvas.addEventListener('keydown', event => {
+        if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', '+', '-', 'Home'].includes(event.key)) return;
+        event.preventDefault();
+        if (event.key === 'Home') { preset('oblique'); return; }
+        if (event.key === 'ArrowLeft') yaw -= .12;
+        if (event.key === 'ArrowRight') yaw += .12;
+        if (event.key === 'ArrowUp') pitch -= .12;
+        if (event.key === 'ArrowDown') pitch += .12;
+        if (event.key === '+') zoom = Math.min(2.8, zoom*1.1);
+        if (event.key === '-') zoom = Math.max(.6, zoom/1.1);
+        view.value = 'oblique';
+        schedule();
+      });
+    }
+    try {
+      renderer = webglRenderer();
+      if (renderer) { root.dataset.renderer = 'webgl'; bindCanvas(); } else fallback();
+    } catch (error) {
+      try { fallback(); }
+      catch (failure) { unavailable('This browser could not render the view. Try another browser.'); return; }
+    }
+    view.addEventListener('change', () => preset(view.value));
+    context.addEventListener('change', schedule);
+    root.querySelector('[data-reset]').addEventListener('click', () => preset('oblique'));
+    new ResizeObserver(schedule).observe(stage);
+    schedule();
+  })();
+  </script>
+</body>
+</html>

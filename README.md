@@ -37,6 +37,18 @@ No manual flipping or mesh preparation is needed. The function does **not**
 register native-space masks. Orange tracks belong to the small display sample;
 this is a visualisation, not a full disconnection analysis.
 
+## Several subjects
+
+Put the lesion masks in one folder, then run:
+
+```matlab
+plot_lesions("lesion_masks", "views");
+```
+
+This opens an all-subject figure and saves **one named HTML viewer per mask**,
+plus **`all_subjects.png` and `all_subjects.pdf`** in `views`. Subjects appear in
+alphabetical filename order, with the same axial view and scale in every panel.
+
 ## Try the example
 
 ```matlab

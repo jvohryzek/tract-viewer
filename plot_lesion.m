@@ -1,10 +1,11 @@
-function output_file = plot_lesion(mask_file, output_file)
+function [output_file, geometry] = plot_lesion(mask_file, output_file)
 %PLOT_LESION View a binary MNI lesion mask with the bundled atlas tracks.
 %   plot_lesion("lesion.nii.gz") writes lesion.html in the current folder.
 %   Input: a 3-D 0/1 NIfTI mask already registered to FSL MNI152 space,
 %   with a valid voxel-to-world transform in millimetres. Requires the
 %   Image Processing Toolbox. No registration is performed.
 %   Orange tracks intersect the mask within the 600-track display sample.
+%   Optional second output: reference/affected tracks and the lesion mesh.
 
 arguments
     mask_file (1,1) string
@@ -49,6 +50,9 @@ for k = 1:numel(reference)
     hit(k) = intersects_mask(xyz(:, 1:3) + 1, mask);
 end
 output_file = plot_tracts(reference, reference(hit), lesion, output_file);
+geometry.reference = reference;
+geometry.affected = reference(hit);
+geometry.lesion = lesion;
 
 % Keep the atlas credit with the self-contained HTML when it is shared.
 page = fileread(output_file);

@@ -4,7 +4,7 @@
 
 **One lesion mask → an interactive tract view.**
 
-[**Try it online ↗**](https://jvohryzek.github.io/tract-viewer/) · [Download](https://github.com/jvohryzek/tract-viewer/archive/refs/heads/main.zip)
+[**Try it online ↗**](https://jvohryzek.github.io/tract-viewer/) · [Download v0.2.0](https://github.com/jvohryzek/tract-viewer/releases/download/v0.2.0/tract-viewer-v0.2.0.zip)
 
 </div>
 
@@ -17,7 +17,7 @@ You supply the lesion masks; **600 reference tracks are included**.
 
 1. Create a folder called `lesion_visualisation`, with a `lesions` subfolder.
    Put one mask per subject there, using the format below.
-2. [Download the toolbox ZIP](https://github.com/jvohryzek/tract-viewer/archive/refs/heads/main.zip)
+2. [Download the toolbox ZIP](https://github.com/jvohryzek/tract-viewer/releases/download/v0.2.0/tract-viewer-v0.2.0.zip)
    and unzip it into `lesion_visualisation`:
 
    ```text
@@ -25,14 +25,14 @@ You supply the lesion masks; **600 reference tracks are included**.
    ├── lesions/
    │   ├── subject_01.nii.gz
    │   └── subject_02.nii.gz
-   └── tract-viewer-main/
+   └── tract-viewer/
        └── ...toolbox files
    ```
 
 3. In MATLAB, set **Current Folder** to `lesion_visualisation`, then run:
 
    ```matlab
-   addpath("tract-viewer-main");
+   addpath("tract-viewer");
    plot_lesions("lesions", "results");
    ```
 
@@ -52,7 +52,7 @@ plot_lesions("lesions/subject_01.nii.gz", "results/subject_01");
 Its single-subject figure is saved as `all_subjects.png` / `.pdf` in that subfolder.
 
 To try the bundled simulated lesion, run `example_tracts` and open
-`tract-viewer-main/example.html`, or [try it online](https://jvohryzek.github.io/tract-viewer/).
+`tract-viewer/example.html`, or [try it online](https://jvohryzek.github.io/tract-viewer/).
 
 ## Mask format
 

@@ -27,7 +27,7 @@ the function draws the lesion and highlights intersecting tracks for you.
 
 | Mask requirement | What to provide |
 | :--- | :--- |
-| File | One **3-D NIfTI**, `.nii` or `.nii.gz` |
+| File | One **3-D NIfTI** volume, `.nii` or `.nii.gz` (a singleton fourth dimension is accepted) |
 | Values | **0** = background, **1** = lesion; at least one lesion voxel |
 | Space | Already registered to **FSL MNI152 / MNI152NLin6Asym** space |
 | Dimensions | Any 3-D grid, e.g. `182 × 218 × 182` at 1 mm or `91 × 109 × 91` at 2 mm |

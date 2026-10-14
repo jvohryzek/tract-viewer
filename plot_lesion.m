@@ -14,7 +14,9 @@ end
 % Read the mask and its spatial information; never change the input file.
 assert(endsWith(lower(mask_file), [".nii", ".nii.gz"]), 'Use a .nii or .nii.gz mask.');
 info = niftiinfo(mask_file);
-assert(numel(info.ImageSize) == 3 && all(info.ImageSize >= 2), 'Use a 3-D mask.');
+shape = info.ImageSize;
+assert(numel(shape) >= 3 && all(shape(1:3) >= 2) && all(shape(4:end) == 1), ...
+    'Use one 3-D mask; trailing singleton dimensions are allowed.');
 assert(strcmpi(info.SpaceUnits, 'Millimeter'), 'The NIfTI spatial units must be millimetres.');
 assert(~strcmp(info.TransformName, 'None'), 'The mask needs a valid NIfTI sform or qform.');
 T = double(info.Transform.T); % Zero-based voxel indices -> RAS world mm (row vectors).
